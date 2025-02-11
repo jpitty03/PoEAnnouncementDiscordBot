@@ -11,6 +11,25 @@ This Discord bot fetches **Path of Exile** announcements from the official RSS f
 
 ---
 
+## Commands (Admins Only)
+
+> **Note:**  
+> Only administrators in your server can use these commands. Non-admin users will not receive any responses.
+
+### `!setpoechannel #channel`
+Sets the channel where the Path of Exile announcements will be posted.
+
+- **Usage:**  In any text channel, type: !setpoechannel #news
+  Replace `#news` with the channel you want to use. The bot will confirm the update with a success message.
+
+### `!poenewshelp`
+Displays a list of available admin commands.
+
+- **Usage:**  
+Simply type: !poenewshelp
+
+---
+
 ## 🛠️ Setup Instructions
 
 ### **1️⃣ Install Dependencies**
