@@ -11,6 +11,12 @@ This Discord bot fetches **Path of Exile** announcements from the official RSS f
 
 ---
 
+## 🛠️ Quick Setup For Your Own Discord Server
+
+### **1️⃣ Follow the link below**
+> [Install PoE Announcements](https://discord.com/oauth2/authorize?client_id=1336092556987207791&scope=bot%20applications.commands&permissions=0)
+---
+
 ## Commands (Admins Only)
 
 > **Note:**  
@@ -35,7 +41,7 @@ Displays a list of available admin commands.
 
 ---
 
-## 🛠️ Setup Instructions
+## 🛠️ Setup Instructions to Run Your Own
 
 ### **1️⃣ Install Dependencies**
 Ensure you have Node.js installed, then install the required packages:
