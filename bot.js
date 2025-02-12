@@ -63,26 +63,56 @@ client.on("messageCreate", (message) => {
     // Help command.
     if (command === "!poenewshelp") {
         return message.reply(
-            "**Available Commands (Admins Only):**\n" +
-            "`!setpoechannel #channel` - Set the Path of Exile Announcements channel.\n" +
+            "**Available Admin Commands:**\n" +
+            "`!setpoechannel #channel` - Set the channel for Path of Exile Announcements.\n" +
+            "`!setpoetag <tag>` - Set a custom tag (e.g., @PoE-1) to be included with announcements.\n" +
             "`!poenewshelp` - Display this help message."
         );
     }
 
-    // Set channel command.
+    // Set announcements channel command.
     if (command === "!setpoechannel") {
         // Get the first mentioned channel.
         const channel = message.mentions.channels.first();
         if (!channel) {
-            return message.reply("❌ Please mention a text channel to set as the news channel. Example: `!setpoechannel #news`");
+            return message.reply("❌ Please mention a text channel to set as the announcements channel. Example: `!setpoechannel #news`");
         }
 
-        // Save the channel ID for this guild.
-        guildChannels[message.guild.id] = channel.id;
+        // If a configuration already exists for this guild, update the channelId;
+        // otherwise, create a new configuration with an empty tag.
+        if (!guildChannels[message.guild.id]) {
+            guildChannels[message.guild.id] = {
+                channelId: channel.id,
+                tag: ""
+            };
+        } else {
+            guildChannels[message.guild.id].channelId = channel.id;
+        }
         saveGuildChannels(guildChannels);
 
         return message.reply(`✅ Path of Exile Announcements channel set to ${channel}.`);
     }
+
+    // Set custom tag command.
+    if (command === "!setpoetag") {
+        // Get the tag from the command arguments.
+        const tag = args.slice(1).join(" ");
+        if (!tag) {
+            return message.reply("❌ Please provide a tag. Usage: `!setpoetag @PoE-1`");
+        }
+
+        // Ensure the announcements channel has been set first.
+        if (!guildChannels[message.guild.id] || !guildChannels[message.guild.id].channelId) {
+            return message.reply("❌ Please set the announcements channel first using `!setpoechannel #channel`.");
+        }
+
+        // Update the tag for this guild.
+        guildChannels[message.guild.id].tag = tag;
+        saveGuildChannels(guildChannels);
+
+        return message.reply(`✅ Custom tag set to: ${tag}`);
+    }
+
 });
 
 
@@ -177,18 +207,23 @@ const fetchAndPostNews = async () => {
                     embed.setThumbnail(imageUrl);
                 }
 
-                // Loop over each guild that has set a news channel and send the embed.
+                // Loop over each guild that has configured announcements.
                 for (let guildId in guildChannels) {
-                    const channelId = guildChannels[guildId];
-                    const channel = client.channels.cache.get(channelId);
+                    const config = guildChannels[guildId];
+                    const channel = client.channels.cache.get(config.channelId);
                     if (channel) {
                         try {
-                            await channel.send({ embeds: [embed] });
+                            // If a custom tag exists, include it in the message content.
+                            if (config.tag && config.tag.trim() !== "") {
+                                await channel.send({ content: config.tag, embeds: [embed] });
+                            } else {
+                                await channel.send({ embeds: [embed] });
+                            }
                         } catch (err) {
-                            console.error(`❌ Could not send message to channel ${channelId} in guild ${guildId}:`, err);
+                            console.error(`❌ Could not send message to channel ${config.channelId} in guild ${guildId}:`, err);
                         }
                     } else {
-                        console.error(`❌ Channel ${channelId} not found for guild ${guildId}.`);
+                        console.error(`❌ Channel ${config.channelId} not found for guild ${guildId}.`);
                     }
                 }
 

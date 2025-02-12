@@ -22,11 +22,16 @@ Sets the channel where the Path of Exile announcements will be posted.
 - **Usage:**  In any text channel, type: !setpoechannel #news
   Replace `#news` with the channel you want to use. The bot will confirm the update with a success message.
 
-### `!poenewshelp`
+#### `!setpoetag <tag>`
+Sets a custom tag that will be included with every announcement posted in your server. This can be used to mention a specific role (e.g., `@poe-news`) or simply to add a custom prefix..
+
+- **Usage:**  Simply type: !setpoetag `@poe-news`
+  Replace `@poe-news` with the desired tag. Ensure that the announcements channel is set before using this command.
+
+#### `!poenewshelp`
 Displays a list of available admin commands.
 
-- **Usage:**  
-Simply type: !poenewshelp
+- **Usage:**  Simply type: !poenewshelp
 
 ---
 
@@ -42,7 +47,6 @@ npm install discord.js node-fetch@2 fs extra xml2js dotenv
 Create a `.env` file in your project directory and add the following:
 ```
 BOT_TOKEN=your_discord_bot_token
-CHANNEL_ID=your_channel_id
 ```
 
 ### **3️⃣ Run the Bot**
@@ -56,7 +60,6 @@ node bot.js
 | **Option**   | **Description**  |
 |-------------|-----------------|
 | `BOT_TOKEN` | Your Discord bot token (from Discord Developer Portal). |
-| `CHANNEL_ID` | The Discord channel where announcements should be posted. |
 | `RSS_FEED_URL` | The Path of Exile RSS feed URL. |
 
 ---
