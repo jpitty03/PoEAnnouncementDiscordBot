@@ -15,6 +15,8 @@ This Discord bot fetches **Path of Exile** announcements from the official RSS f
 
 ### **1️⃣ Follow the link below**
 > [Install PoE Announcements](https://discord.com/oauth2/authorize?client_id=1336092556987207791&scope=bot%20applications.commands&permissions=0)
+>
+> Message me on Discord for support (IceTown), or join our [Discord](https://discord.gg/DcstwdqbGP)
 ---
 
 ## Commands (Admins Only)
