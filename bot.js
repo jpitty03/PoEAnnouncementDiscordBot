@@ -8,7 +8,6 @@ const xml2js = require("xml2js");
 const RSS_FEED_URL = "https://www.pathofexile.com/news/rss";
 
 const JSON_FILE = "posted_news.json";
-
 const GUILD_CHANNELS_FILE = "guild_channels.json";
 
 // Create the client with intents.
@@ -23,7 +22,6 @@ const client = new Client({
 // -----------------------
 // Utility functions to load and save JSON data
 // -----------------------
-
 const loadJSON = (filename) => {
     if (fs.existsSync(filename)) {
         return JSON.parse(fs.readFileSync(filename, "utf8"));
@@ -45,11 +43,32 @@ const saveGuildChannels = (guildChannels) => saveJSON(GUILD_CHANNELS_FILE, guild
 let guildChannels = loadGuildChannels();
 
 // -----------------------
-// Command to allow a guild admin to set the channel for news posts.
-// For example, an admin can type: !setpoechannel #news
+// Helper function for safe replies.
+// This wraps message.reply in a try/catch block and notifies the guild owner if sending fails.
 // -----------------------
+async function safeReply(message, content) {
+    try {
+        await message.reply(content);
+    } catch (err) {
+        console.error("Error replying to command:", err);
+        try {
+            const guild = message.guild;
+            if (guild) {
+                const owner = await guild.fetchOwner();
+                await owner.send(
+                    `Hello! I encountered an error while replying to a command in <#${message.channel.id}>. The error was: \`${err.message}\`. Please check that I have permission to send messages in that channel.`
+                );
+            }
+        } catch (notifyErr) {
+            console.error("Error notifying the guild owner:", notifyErr);
+        }
+    }
+}
 
-client.on("messageCreate", (message) => {
+// -----------------------
+// Command handler (Admins Only)
+// -----------------------
+client.on("messageCreate", async (message) => {
     // Ignore messages from bots.
     if (message.author.bot) return;
 
@@ -62,11 +81,12 @@ client.on("messageCreate", (message) => {
 
     // Help command.
     if (command === "!poenewshelp") {
-        return message.reply(
+        return safeReply(
+            message,
             "**Available Admin Commands:**\n" +
-            "`!setpoechannel #channel` - Set the channel for Path of Exile Announcements.\n" +
-            "`!setpoetag <tag>` - Set a custom tag (e.g., @PoE-1) to be included with announcements.\n" +
-            "`!poenewshelp` - Display this help message."
+                "`!setpoechannel #channel` - Set the channel for Path of Exile Announcements.\n" +
+                "`!setpoetag <tag>` - Set a custom tag (e.g., @PoE-1) to be included with announcements.\n" +
+                "`!poenewshelp` - Display this help message."
         );
     }
 
@@ -75,22 +95,24 @@ client.on("messageCreate", (message) => {
         // Get the first mentioned channel.
         const channel = message.mentions.channels.first();
         if (!channel) {
-            return message.reply("❌ Please mention a text channel to set as the announcements channel. Example: `!setpoechannel #news`");
+            return safeReply(
+                message,
+                "❌ Please mention a text channel to set as the announcements channel. Example: `!setpoechannel #news`"
+            );
         }
 
-        // If a configuration already exists for this guild, update the channelId;
-        // otherwise, create a new configuration with an empty tag.
+        // Create or update the configuration for this guild.
         if (!guildChannels[message.guild.id]) {
-            guildChannels[message.guild.id] = {
-                channelId: channel.id,
-                tag: ""
-            };
+            guildChannels[message.guild.id] = { channelId: channel.id, tag: "" };
         } else {
             guildChannels[message.guild.id].channelId = channel.id;
         }
         saveGuildChannels(guildChannels);
 
-        return message.reply(`✅ Path of Exile Announcements channel set to ${channel}.`);
+        return safeReply(
+            message,
+            `✅ Path of Exile Announcements channel set to ${channel}.`
+        );
     }
 
     // Set custom tag command.
@@ -98,29 +120,34 @@ client.on("messageCreate", (message) => {
         // Get the tag from the command arguments.
         const tag = args.slice(1).join(" ");
         if (!tag) {
-            return message.reply("❌ Please provide a tag. Usage: `!setpoetag @PoE-1`");
+            return safeReply(
+                message,
+                "❌ Please provide a tag. Usage: `!setpoetag @PoE-1`"
+            );
         }
 
         // Ensure the announcements channel has been set first.
         if (!guildChannels[message.guild.id] || !guildChannels[message.guild.id].channelId) {
-            return message.reply("❌ Please set the announcements channel first using `!setpoechannel #channel`.");
+            return safeReply(
+                message,
+                "❌ Please set the announcements channel first using `!setpoechannel #channel`."
+            );
         }
 
         // Update the tag for this guild.
         guildChannels[message.guild.id].tag = tag;
         saveGuildChannels(guildChannels);
 
-        return message.reply(`✅ Custom tag set to: ${tag}`);
+        return safeReply(
+            message,
+            `✅ Custom tag set to: ${tag}`
+        );
     }
-
 });
-
 
 // -----------------------
 // Function to fetch and post news.
-// Loop over all guilds that have configured a channel.
 // -----------------------
-
 const fetchAndPostNews = async () => {
     console.log("🔍 Checking for new news...");
 
@@ -133,7 +160,7 @@ const fetchAndPostNews = async () => {
     let postedNews = loadPostedNews();
 
     try {
-        // Fetch the RSS feed
+        // Fetch the RSS feed.
         const response = await fetch(RSS_FEED_URL, {
             headers: {
                 "User-Agent":
@@ -144,16 +171,16 @@ const fetchAndPostNews = async () => {
 
         let text = await response.text();
 
-        // Handle possible Cloudflare blocks
+        // Handle possible Cloudflare blocks.
         if (text.includes("<html") || text.includes("Cloudflare")) {
             console.error("❌ Cloudflare is blocking the request.");
             return;
         }
 
-        // Fix for potential unescaped ampersands
+        // Fix for potential unescaped ampersands.
         text = text.replace(/&(?!(amp;|lt;|gt;|quot;|apos;))/g, "&amp;");
 
-        // Parse the XML
+        // Parse the XML.
         const parsedData = await xml2js.parseStringPromise(text, { mergeAttrs: true });
         if (!parsedData.rss || !parsedData.rss.channel || !parsedData.rss.channel[0].item) {
             console.error("❌ Error: Unexpected RSS feed structure", parsedData);
@@ -163,7 +190,7 @@ const fetchAndPostNews = async () => {
         const items = parsedData.rss.channel[0].item || [];
         const imageUrl = parsedData.rss.channel[0].image?.[0].url?.[0] || null;
 
-        // Reverse the list so that older news is processed first.
+        // Process older news first.
         for (let item of items.reverse()) {
             const title = item.title?.[0] || "No Title";
             let description = item.description?.[0] || "No Description";
@@ -171,27 +198,18 @@ const fetchAndPostNews = async () => {
             const pubDateRaw = item.pubDate?.[0];
             const category = item.category?.[0] || "General";
 
-            // Use the publication date as a unique key for this news item.
+            // Use the publication date as a unique key.
             if (pubDateRaw && !postedNews[pubDateRaw]) {
-                // Format the date (e.g. "Mon, 03 Feb 2025")
                 const pubDateFormatted = pubDateRaw.split(" ").slice(0, 4).join(" ");
 
-                // Remove "Read More" links from the description
+                // Clean and format description.
                 description = description.replace(/<a href=".*?">Read More.<\/a>/g, "").trim();
-
-                // Convert any remaining HTML anchor tags to Markdown links.
-                // This will transform something like:
-                // <a href="https://example.com">Example</a>
-                // into:
-                // [Example](https://example.com)
                 description = description.replace(/<a\s+href="([^"]+)"\s*>(.*?)<\/a>/gi, "[$2]($1)");
-
-                // Shorten description if it’s too long for Discord embeds.
                 if (description.length > 1000) {
                     description = description.substring(0, 1000) + "...";
                 }
 
-                // Create the embed message
+                // Create the embed message.
                 const embed = new EmbedBuilder()
                     .setTitle(title)
                     .setURL(link)
@@ -202,18 +220,16 @@ const fetchAndPostNews = async () => {
                     )
                     .setColor("Red");
 
-                // If an image is available, add it as a thumbnail.
                 if (imageUrl) {
                     embed.setThumbnail(imageUrl);
                 }
 
-                // Loop over each guild that has configured announcements.
+                // Loop over each configured guild.
                 for (let guildId in guildChannels) {
                     const config = guildChannels[guildId];
                     const channel = client.channels.cache.get(config.channelId);
                     if (channel) {
                         try {
-                            // If a custom tag exists, include it in the message content.
                             if (config.tag && config.tag.trim() !== "") {
                                 await channel.send({ content: config.tag, embeds: [embed] });
                             } else {
@@ -221,13 +237,24 @@ const fetchAndPostNews = async () => {
                             }
                         } catch (err) {
                             console.error(`❌ Could not send message to channel ${config.channelId} in guild ${guildId}:`, err);
+                            try {
+                                const guild = client.guilds.cache.get(guildId);
+                                if (guild) {
+                                    const owner = await guild.fetchOwner();
+                                    await owner.send(
+                                        `Hello! I encountered an error while trying to send an announcement to <#${config.channelId}> in your server. The error was: \`${err.message}\`. Please check my channel permissions.`
+                                    );
+                                }
+                            } catch (notifyErr) {
+                                console.error(`❌ Could not notify the owner of guild ${guildId}:`, notifyErr);
+                            }
                         }
                     } else {
                         console.error(`❌ Channel ${config.channelId} not found for guild ${guildId}.`);
                     }
                 }
 
-                // Mark this news item as posted (global across all guilds)
+                // Mark this news item as posted (global across all guilds).
                 postedNews[pubDateRaw] = { title, link };
                 savePostedNews(postedNews);
             }
@@ -238,10 +265,8 @@ const fetchAndPostNews = async () => {
 };
 
 // -----------------------
-// Set up the periodic news check and login
+// Set up the periodic news check and login.
 // -----------------------
-
-// Check for new news every 15 minutes.
 setInterval(fetchAndPostNews, 15 * 60 * 1000);
 
 client.once("ready", () => {
