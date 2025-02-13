@@ -19,10 +19,12 @@ This Discord bot fetches **Path of Exile** announcements from the official RSS f
 > Message me on Discord for support (IceTown), or join our [Discord](https://discord.gg/DcstwdqbGP)
 ---
 
-## Commands (Admins Only)
+## Commands (Mods Only)
 
 > **Note:**  
-> Only administrators in your server can use these commands. Non-admin users will not receive any responses.
+> Only moderators/admins in your server can use these commands. Non-admin users will not receive any responses.
+>
+> A moderator must have one of these permissions: **Administrator, ManageChannels, ManageMessages, or KickMembers**
 
 ### `!setpoechannel #channel`
 Sets the channel where the Path of Exile announcements will be posted.
