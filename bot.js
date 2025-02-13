@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
+const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const xml2js = require("xml2js");
@@ -52,28 +52,32 @@ async function safeReply(message, content) {
     } catch (err) {
         console.error("Error replying to command:", err);
         try {
-            const guild = message.guild;
-            if (guild) {
-                const owner = await guild.fetchOwner();
-                await owner.send(
-                    `Hello! I encountered an error while replying to a command in <#${message.channel.id}>. The error was: \`${err.message}\`. Please check that I have permission to send messages in that channel.`
-                );
-            }
-        } catch (notifyErr) {
-            console.error("Error notifying the guild owner:", notifyErr);
+            // Send a DM to the command issuer with the detailed error message.
+            await message.author.send(
+                `I encountered an error while processing your command in <#${message.channel.id}>.\n\nError details: \`${err.message}\``
+            );
+        } catch (dmErr) {
+            console.error("Error DMing the command issuer:", dmErr);
         }
     }
 }
 
 // -----------------------
-// Command handler (Admins Only)
+// Command handler (Mods Only)
 // -----------------------
 client.on("messageCreate", async (message) => {
     // Ignore messages from bots.
     if (message.author.bot) return;
 
-    // Only allow administrators to use commands.
-    if (!message.member.permissions.has("Administrator")) return;
+    // Only allow mods to use commands.
+    if (
+        !message.member.permissions.has(PermissionFlagsBits.Administrator) &&
+        !message.member.permissions.has(PermissionFlagsBits.ManageChannels) &&
+        !message.member.permissions.has(PermissionFlagsBits.ManageMessages) &&
+        !message.member.permissions.has(PermissionFlagsBits.KickMembers)
+    ) {
+        return;
+    }
 
     // Split the message content into arguments.
     const args = message.content.trim().split(/\s+/);
@@ -83,10 +87,10 @@ client.on("messageCreate", async (message) => {
     if (command === "!poenewshelp") {
         return safeReply(
             message,
-            "**Available Admin Commands:**\n" +
-                "`!setpoechannel #channel` - Set the channel for Path of Exile Announcements.\n" +
-                "`!setpoetag <tag>` - Set a custom tag (e.g., @PoE-1) to be included with announcements.\n" +
-                "`!poenewshelp` - Display this help message."
+            "**Available Mod Commands:**\n" +
+            "`!setpoechannel #channel` - Set the channel for Path of Exile Announcements.\n" +
+            "`!setpoetag <tag>` - Set a custom tag (e.g., @PoE-1) to be included with announcements.\n" +
+            "`!poenewshelp` - Display this help message."
         );
     }
 
@@ -108,6 +112,15 @@ client.on("messageCreate", async (message) => {
             guildChannels[message.guild.id].channelId = channel.id;
         }
         saveGuildChannels(guildChannels);
+
+        console.log(
+            `
+            Username: ${message.author.username} 
+            GlobalName: ${message.author.globalName}
+            -------------------------------------
+            Subscribed to ${channel}
+            ------------------------------------
+            `);
 
         return safeReply(
             message,
