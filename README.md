@@ -80,15 +80,7 @@ node bot.js
 ---
 
 ## ✨ Example Announcement
-```
-📢 Upcoming Changes in Path of Exile 2 0.1.1
-📄 Later this week we will be releasing Path of Exile 2 0.1.1.
-🔗 [Read More](https://www.pathofexile.com/forum/view-thread/3691520)
-📅 Published: Mon, 03 Feb 2025
-📂 Category: news
-🖼 Image: Path of Exile Logo
-```
-
+![Announcement Example](https://github.com/jpitty03/PoEAnnouncementDiscordBot/blob/main/poe-announcement.png)
 ---
 
 ## 📌 Future Enhancements
