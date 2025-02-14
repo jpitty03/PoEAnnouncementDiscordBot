@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder } = require
 const fetch = require("node-fetch");
 const fs = require("fs");
 const xml2js = require("xml2js");
+const { setupPolling } = require("./utils/polling");
 
 // URL for the RSS feed
 const RSS_FEED_URL = "https://www.pathofexile.com/news/rss";
@@ -40,7 +41,7 @@ const loadGuildChannels = () => loadJSON(GUILD_CHANNELS_FILE);
 const saveGuildChannels = (guildChannels) => saveJSON(GUILD_CHANNELS_FILE, guildChannels);
 
 // Load the guild channels mapping at startup
-let guildChannels = loadGuildChannels();
+// let guildChannels = loadGuildChannels();
 
 // -----------------------
 // Helper function for safe replies.
@@ -66,6 +67,8 @@ async function safeReply(message, content) {
 // Command handler (Mods Only)
 // -----------------------
 client.on("messageCreate", async (message) => {
+    let guildChannels = loadGuildChannels();
+
     // Ignore messages from bots.
     if (message.author.bot) return;
 
@@ -130,6 +133,8 @@ client.on("messageCreate", async (message) => {
 
     // Set custom tag command.
     if (command === "!setpoetag") {
+        guildChannels = loadGuildChannels();
+        
         // Get the tag from the command arguments.
         const tag = args.slice(1).join(" ");
         if (!tag) {
@@ -163,6 +168,9 @@ client.on("messageCreate", async (message) => {
 // -----------------------
 const fetchAndPostNews = async () => {
     console.log("🔍 Checking for new news...");
+
+    // Load the current state of guild channels at the start of each check
+    const guildChannels = loadGuildChannels();
 
     // If no guilds have been configured, do nothing.
     if (Object.keys(guildChannels).length === 0) {
@@ -280,11 +288,10 @@ const fetchAndPostNews = async () => {
 // -----------------------
 // Set up the periodic news check and login.
 // -----------------------
-setInterval(fetchAndPostNews, 15 * 60 * 1000);
-
 client.once("ready", () => {
     console.log(`Logged in as ${client.user.tag}`);
     fetchAndPostNews();
+    setupPolling(fetchAndPostNews);
 });
 
 client.login(process.env.BOT_TOKEN);
