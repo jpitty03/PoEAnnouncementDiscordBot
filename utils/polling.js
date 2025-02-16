@@ -23,7 +23,10 @@ function setupPolling(fetchAndPostNews) {
             // Clear existing interval and set new one
             clearInterval(timer);
             interval = newInterval;
-            timer = setInterval(setupPolling, interval);
+            // Pass fetchAndPostNews to the new interval
+            timer = setInterval(async () => {
+                await fetchAndPostNews();
+            }, interval);
         }
     }, interval);
 }
