@@ -93,6 +93,7 @@ client.on("messageCreate", async (message) => {
             "**Available Mod Commands:**\n" +
             "`!setpoechannel #channel` - Set the channel for Path of Exile Announcements.\n" +
             "`!setpoetag <tag>` - Set a custom tag (e.g., @PoE-1) to be included with announcements.\n" +
+            "`!togglex` - Enable/Disable Path of Exile Twitter/X Posts.\n" +
             "`!poenewshelp` - Display this help message."
         );
     }
@@ -131,10 +132,42 @@ client.on("messageCreate", async (message) => {
         );
     }
 
+    // Set announcements channel command.
+    if (command === "!togglex") {
+        let guildChannels = loadGuildChannels();
+
+        // Check if guild is configured
+        if (!guildChannels[message.guild.id]) {
+            return safeReply(
+                message,
+                "❌ This server hasn't set up an announcements channel yet. Use `!setpoechannel #channel` first."
+            );
+        }
+
+        // If xposts doesn't exist, add it as true
+        if (!('xposts' in guildChannels[message.guild.id])) {
+            guildChannels[message.guild.id].xposts = true;
+            saveGuildChannels(guildChannels);
+            return safeReply(
+                message,
+                "✅ X/Twitter posts have been enabled for this server."
+            );
+        }
+
+        // Toggle existing xposts value
+        guildChannels[message.guild.id].xposts = !guildChannels[message.guild.id].xposts;
+        saveGuildChannels(guildChannels);
+
+        return safeReply(
+            message,
+            `✅ X/Twitter posts have been ${guildChannels[message.guild.id].xposts ? 'enabled' : 'disabled'} for this server.`
+        );
+    }
+
     // Set custom tag command.
     if (command === "!setpoetag") {
         guildChannels = loadGuildChannels();
-        
+
         // Get the tag from the command arguments.
         const tag = args.slice(1).join(" ");
         if (!tag) {
