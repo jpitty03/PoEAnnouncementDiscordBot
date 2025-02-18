@@ -38,6 +38,11 @@ Sets a custom tag that will be included with every announcement posted in your s
 - **Usage:**  Simply type: !setpoetag `@poe-news`
   Replace `@poe-news` with the desired tag. Ensure that the announcements channel is set before using this command.
 
+#### `!togglex`
+Toggles the ability to receive Twitter/X posts in set channel.
+
+- **Usage:**  Simply type: !togglex
+
 #### `!poenewshelp`
 Displays a list of available admin commands.
 
