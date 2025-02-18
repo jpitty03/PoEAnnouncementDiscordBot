@@ -1,37 +1,27 @@
-function getCurrentPollInterval() {
-    const now = new Date();
-    const hour = now.getHours();
-
-    // Check if time is between 22:00 (10 PM) and 05:00 (5 AM)
-    if (hour >= 22 || hour < 5) {
-        console.log(`🌙 Night time polling interval: 2 hours (${now.toLocaleTimeString()})`);
-        return 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-    } else {
-        console.log(`☀️ Day time polling interval: 10 minutes (${now.toLocaleTimeString()})`);
-        return 10 * 60 * 1000; // 10 minutes in milliseconds
-    }
-}
-
 function setupPolling(fetchAndPostNews) {
-    let interval = getCurrentPollInterval();
-    let timer = setInterval(async () => {
-        await fetchAndPostNews();
-        
-        // Check if we need to change the interval
-        const newInterval = getCurrentPollInterval();
-        if (newInterval !== interval) {
-            // Clear existing interval and set new one
-            clearInterval(timer);
-            interval = newInterval;
-            // Pass fetchAndPostNews to the new interval
-            timer = setInterval(async () => {
-                await fetchAndPostNews();
-            }, interval);
+    // Check interval every minute
+    setInterval(() => {
+        const now = new Date();
+        const minutes = now.getMinutes();
+        const hours = now.getHours();
+
+        // During day time (5 AM - 10 PM), run every 10 minutes
+        if (hours >= 5 && hours < 22) {
+            if (minutes % 10 === 0) {
+                console.log(`☀️ Day time check: ${now.toLocaleTimeString()}`);
+                fetchAndPostNews();
+            }
         }
-    }, interval);
+        // During night time (10 PM - 5 AM), run every 2 hours
+        else {
+            if (minutes === 0 && hours % 2 === 0) {
+                console.log(`🌙 Night time check: ${now.toLocaleTimeString()}`);
+                fetchAndPostNews();
+            }
+        }
+    }, 60 * 1000); // Check every minute
 }
 
 module.exports = {
-    getCurrentPollInterval,
     setupPolling
 };

@@ -1,9 +1,10 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const fetch = require("node-fetch");
-const fs = require("fs");
 const xml2js = require("xml2js");
 const { setupPolling } = require("./utils/polling");
+const { fetchXPosts } = require("./utils/getXPosts");
+const { loadPostedNews, savePostedNews, loadGuildChannels, saveGuildChannels } = require("./utils/helpers")
 
 // URL for the RSS feed
 const RSS_FEED_URL = "https://www.pathofexile.com/news/rss";
@@ -19,29 +20,6 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
     ],
 });
-
-// -----------------------
-// Utility functions to load and save JSON data
-// -----------------------
-const loadJSON = (filename) => {
-    if (fs.existsSync(filename)) {
-        return JSON.parse(fs.readFileSync(filename, "utf8"));
-    }
-    return {};
-};
-
-const saveJSON = (filename, data) => {
-    fs.writeFileSync(filename, JSON.stringify(data, null, 4));
-};
-
-const loadPostedNews = () => loadJSON(JSON_FILE);
-const savePostedNews = (postedNews) => saveJSON(JSON_FILE, postedNews);
-
-const loadGuildChannels = () => loadJSON(GUILD_CHANNELS_FILE);
-const saveGuildChannels = (guildChannels) => saveJSON(GUILD_CHANNELS_FILE, guildChannels);
-
-// Load the guild channels mapping at startup
-// let guildChannels = loadGuildChannels();
 
 // -----------------------
 // Helper function for safe replies.
@@ -67,7 +45,7 @@ async function safeReply(message, content) {
 // Command handler (Mods Only)
 // -----------------------
 client.on("messageCreate", async (message) => {
-    let guildChannels = loadGuildChannels();
+    let guildChannels = loadGuildChannels(GUILD_CHANNELS_FILE);
 
     // Ignore messages from bots.
     if (message.author.bot) return;
@@ -115,14 +93,16 @@ client.on("messageCreate", async (message) => {
         } else {
             guildChannels[message.guild.id].channelId = channel.id;
         }
-        saveGuildChannels(guildChannels);
+        saveGuildChannels(GUILD_CHANNELS_FILE, guildChannels);
 
         console.log(
             `
             Username: ${message.author.username} 
             GlobalName: ${message.author.globalName}
             -------------------------------------
-            Subscribed to ${channel}
+            Subscribed to bot.
+            Server: '${channel.guild.name} (${channel.guildId})'
+            Channel: '${channel.name} (${channel})'
             ------------------------------------
             `);
 
@@ -134,7 +114,7 @@ client.on("messageCreate", async (message) => {
 
     // Set announcements channel command.
     if (command === "!togglex") {
-        let guildChannels = loadGuildChannels();
+        let guildChannels = loadGuildChannels(GUILD_CHANNELS_FILE);
 
         // Check if guild is configured
         if (!guildChannels[message.guild.id]) {
@@ -147,7 +127,7 @@ client.on("messageCreate", async (message) => {
         // If xposts doesn't exist, add it as true
         if (!('xposts' in guildChannels[message.guild.id])) {
             guildChannels[message.guild.id].xposts = true;
-            saveGuildChannels(guildChannels);
+            saveGuildChannels(GUILD_CHANNELS_FILE, guildChannels);
             return safeReply(
                 message,
                 "✅ X/Twitter posts have been enabled for this server."
@@ -156,7 +136,7 @@ client.on("messageCreate", async (message) => {
 
         // Toggle existing xposts value
         guildChannels[message.guild.id].xposts = !guildChannels[message.guild.id].xposts;
-        saveGuildChannels(guildChannels);
+        saveGuildChannels(GUILD_CHANNELS_FILE, guildChannels);
 
         return safeReply(
             message,
@@ -166,7 +146,7 @@ client.on("messageCreate", async (message) => {
 
     // Set custom tag command.
     if (command === "!setpoetag") {
-        guildChannels = loadGuildChannels();
+        guildChannels = loadGuildChannels(GUILD_CHANNELS_FILE);
 
         // Get the tag from the command arguments.
         const tag = args.slice(1).join(" ");
@@ -187,7 +167,7 @@ client.on("messageCreate", async (message) => {
 
         // Update the tag for this guild.
         guildChannels[message.guild.id].tag = tag;
-        saveGuildChannels(guildChannels);
+        saveGuildChannels(GUILD_CHANNELS_FILE, guildChannels);
 
         return safeReply(
             message,
@@ -203,7 +183,7 @@ const fetchAndPostNews = async () => {
     console.log("🔍 Checking for new news...");
 
     // Load the current state of guild channels at the start of each check
-    const guildChannels = loadGuildChannels();
+    const guildChannels = loadGuildChannels(GUILD_CHANNELS_FILE);
 
     // If no guilds have been configured, do nothing.
     if (Object.keys(guildChannels).length === 0) {
@@ -211,7 +191,7 @@ const fetchAndPostNews = async () => {
         return;
     }
 
-    let postedNews = loadPostedNews();
+    let postedNews = loadPostedNews(JSON_FILE);
 
     try {
         // Fetch the RSS feed.
@@ -310,9 +290,12 @@ const fetchAndPostNews = async () => {
 
                 // Mark this news item as posted (global across all guilds).
                 postedNews[pubDateRaw] = { title, link };
-                savePostedNews(postedNews);
+                savePostedNews(JSON_FILE, postedNews);
             }
         }
+
+        // Fetch Path of Exile Twitter/X Posts and message discord if Twitter/X is enabled.
+        fetchXPosts(client);
     } catch (error) {
         console.error("❌ Error fetching RSS feed:", error);
     }
@@ -327,4 +310,5 @@ client.once("ready", () => {
     setupPolling(fetchAndPostNews);
 });
 
+// eslint-disable-next-line no-undef
 client.login(process.env.BOT_TOKEN);
