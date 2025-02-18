@@ -53,7 +53,7 @@ const fetchXPosts = async (client) => {
             if (postedXNews.includes(guidNumber)) continue;
 
             // Create the fixupx.com URL
-            const fixupUrl = `https://fixupx.com/pathofexile/status/${guidNumber}`;
+            const fixupUrl = `https://vxtwitter.com/pathofexile/status/${guidNumber}`;
 
             // Send to all configured channels that have xposts enabled
             for (const [guildId, guildData] of Object.entries(guildChannels)) {
