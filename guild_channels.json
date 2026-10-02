@@ -1,21 +1,8 @@
 {
-    "1338920352843042897": {
-        "channelId": "1338920384199655484",
-        "tag": "@everyone",
-        "xposts": true
-    },
-    "1338920327725425528430234234test": {
-        "channelId": "test",
-        "tag": ""
-    },
-    "345345345345test": {
-        "channelId": "1test",
-        "tag": "",
-        "xposts": false
-    },
-    "133892033756732521414114test": {
-        "channelId": "2test",
-        "tag": "",
-        "xposts": true
-    }
+  "1554168454074863689": {
+    "channelId": "1555440211184328715",
+    "tag": "",
+    "xposts": false,
+    "subscribedAt": "2026-10-02T04:47:54.647Z"
+  }
 }

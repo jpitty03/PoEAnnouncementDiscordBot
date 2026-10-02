@@ -1,2 +1,14 @@
 .env
+.env.*
+!.env.example
 /node_modules
+/coverage
+/data
+/delivery_state.json
+/guild_channels.json
+/posted_news.json
+/posted_x_news.json
+*.json.bak
+*.tmp
+/.bot.lock/
+*.log
