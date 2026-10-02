@@ -1,9 +1,15 @@
+# Local credentials
 .env
 .env.*
 !.env.example
+# Dependencies and test output
 /node_modules
 /coverage
+
+# Runtime state and private backups
 /data
+/backups/
+# Keep exports from older setups private as well.
 /bot-data-transfer*/
 /delivery_state.json
 /guild_channels.json

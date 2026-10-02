@@ -9,4 +9,3 @@
 !utils/*.js
 !scripts/
 !scripts/check-feeds.js
-!scripts/import-data.js
