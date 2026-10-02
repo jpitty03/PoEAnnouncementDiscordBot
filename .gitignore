@@ -4,6 +4,7 @@
 /node_modules
 /coverage
 /data
+/bot-data-transfer*/
 /delivery_state.json
 /guild_channels.json
 /posted_news.json

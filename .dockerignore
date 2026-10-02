@@ -1,0 +1,12 @@
+# Allow only application code and locked dependencies into the build context.
+# Credentials, delivery history, node_modules, and Git files stay on the host.
+**
+!Dockerfile
+!package.json
+!package-lock.json
+!bot.js
+!utils/
+!utils/*.js
+!scripts/
+!scripts/check-feeds.js
+!scripts/import-data.js

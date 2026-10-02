@@ -1,0 +1,32 @@
+name: poe-news-bot
+
+services:
+  bot:
+    build: .
+    image: poe-news-bot:local
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 45s
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      # Override any local DATA_DIR in .env so state always lives in the volume.
+      DATA_DIR: /data/state
+    volumes:
+      - bot-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  bot-data:

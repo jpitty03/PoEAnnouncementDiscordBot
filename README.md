@@ -39,6 +39,98 @@ On first use of each source, the default `FIRST_RUN_MODE=baseline` records its e
 
 For an existing bot, stop the old process before starting this version. Keep `guild_channels.json`, `posted_news.json`, and `posted_x_news.json` in the configured data directory. Legacy announcement history remains read-only and suppresses old posts. Because the old format tracked posts globally, it cannot identify which individual servers missed historical announcements.
 
+## Run with Docker on another computer
+
+Use Docker Desktop in **Linux containers** mode on Windows/macOS, or Docker Engine with the Compose plugin on Linux. The computer must stay awake with Docker running for the bot to stay online. Node.js and npm are included in the image; you do not need to install them on the host.
+
+First commit and push the Docker files and this guide from the development computer. On the other computer, clone that commit (or run `git pull` in an existing clone), open a terminal in the repository, and follow these steps.
+
+1. Create `.env` from `.env.example`. In PowerShell:
+
+   ```powershell
+   Copy-Item .env.example .env
+   notepad .env
+   ```
+
+   On Linux/macOS, use `cp .env.example .env` and your preferred editor. Replace `your_discord_bot_token` with your bot's token, or privately copy your existing `.env` from the original computer to keep its settings. Preserve an existing `.env` instead of overwriting it. Leave `NEWS_SOURCE=rss` and `FIRST_RUN_MODE=baseline` unless you intentionally want different behavior. Compose sets `DATA_DIR=/data/state` inside the container regardless of the value in `.env`.
+
+2. **If moving the existing bot**, stop it on the original computer and transfer its data using the migration instructions below **before starting the new container**. Running the same bot on two computers with separate histories can send duplicate announcements. For a brand-new bot with no history to keep, continue to step 3.
+
+3. Build and start the bot in the background:
+
+   ```sh
+   docker compose up -d --build
+   ```
+
+4. Check startup:
+
+   ```sh
+   docker compose ps
+   docker compose logs --tail=50 -f bot
+   ```
+
+   Look for `Logged in as ...; news source: rss.` Ctrl+C exits the log viewer; the container keeps running. On a new installation, no server is configured until the next step.
+
+5. In a Discord channel the bot can access, run these as a moderator:
+
+   ```text
+   !setpoechannel #game-news
+   !poenewsstatus
+   ```
+
+   Select the actual channel mention when typing `#game-news`. Enable Message Content Intent in the Discord Developer Portal and grant the channel permissions listed under **Run locally**. Existing migrated subscriptions keep their channels. The initial feed is baselined, so use `!postpoenews latest` if you want an announcement immediately.
+
+The container runs as the unprivileged `node` user, restarts automatically unless explicitly stopped, and gets 45 seconds to shut down cleanly. It needs outbound internet access to Discord and the news feed; no inbound port or router forwarding is required. Log rotation limits each container to three 10 MB log files. `.env`, local history, and the Git checkout are excluded from the image.
+
+### Transfer the existing bot and its history
+
+Transfer `.env` privately as described above; it is not part of the data backup. Keep the original bot stopped after the move.
+
+**From a Docker installation**, run on the original computer:
+
+```sh
+docker compose stop bot
+docker compose cp bot:/data/state ./bot-data-transfer
+```
+
+Use a new `bot-data-transfer` directory for each export. Copy that directory to the root of the clone on the other computer. The directory should directly contain `guild_channels.json`, `delivery_state.json`, and any legacy `posted_news.json`, `posted_x_news.json`, or `.bak` files.
+
+**From a local `node bot.js` installation**, stop it with Ctrl+C, then copy those same files from its configured `DATA_DIR` into `bot-data-transfer` on the other computer. With the default configuration, the files are in the original project root. Transfer the current files, not an older copy from Git.
+
+On the destination computer, import before the first `docker compose up`:
+
+```sh
+docker compose build --pull
+docker compose run --rm --no-deps --volume "${PWD}/bot-data-transfer:/import:ro" bot node scripts/import-data.js /import /data/state
+docker compose up -d
+```
+
+`${PWD}` works in PowerShell and Linux/macOS shells. The importer validates the history, copies only the four bot data files and their backups, preserves the source, and refuses to overwrite an existing destination or import from an active bot. A failed validation leaves the destination unpublished. It does not log in to Discord or send announcements.
+
+For a first migration into Docker on the **same** computer, you can mount the stopped local bot's existing data directory directly instead of making a transfer folder. If its data is in the current project root:
+
+```sh
+docker compose build --pull
+docker compose run --rm --no-deps --volume "${PWD}:/import:ro" bot node scripts/import-data.js /import /data/state
+docker compose up -d
+```
+
+### Manage the Docker bot
+
+| Task | Command |
+| --- | --- |
+| View status | `docker compose ps` |
+| View logs | `docker compose logs --tail=50 -f bot` |
+| Stop | `docker compose stop bot` |
+| Start again | `docker compose up -d` |
+| Apply `.env` changes | `docker compose up -d --force-recreate` |
+| Update code and the Node image | `git pull`, then `docker compose build --pull`, then `docker compose up -d` |
+| Check the feed without posting | `docker compose run --rm --no-deps bot node scripts/check-feeds.js` |
+
+Current server configuration and delivery history live in the named volume **`poe-news-bot_bot-data`**, under `/data/state` in the container. The old files in the checkout stop being the active state after import. Back up the volume using the stop-and-copy procedure above. Ordinary rebuilds and `docker compose down` retain it; `docker compose down --volumes` deletes it. A Git clone does not include this volume or `.env`.
+
+On Docker Desktop, enable startup when you sign in if you want the container to return automatically after a reboot. An intentionally stopped container stays stopped until you start it again. Docker behavior is documented in the [Compose service reference](https://docs.docker.com/reference/compose-file/services/) and [volume guide](https://docs.docker.com/engine/storage/volumes/).
+
 ## Moderator commands
 
 A moderator needs at least one of **Administrator**, **Manage Channels**, **Manage Messages**, or **Kick Members**. Commands from bots, direct messages, and unauthorized members are ignored.
