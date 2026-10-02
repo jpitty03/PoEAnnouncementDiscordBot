@@ -1,5 +1,6 @@
 const { loadPostedNews, savePostedNews, loadGuildChannels } = require("./helpers");
 const xml2js = require("xml2js");
+const { retryFetch } = require("./retryFetch");
 
 const JSON_X_FILE = "./posted_x_news.json";
 const GUILD_CHANNELS_FILE = "./guild_channels.json";
@@ -23,12 +24,12 @@ const fetchXPosts = async (client) => {
     }
 
     try {
-        const response = await fetch(RSS_FEED_URL, {
+        const response = await retryFetch(RSS_FEED_URL, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
                 "Accept": "application/xml, text/xml"
             }
-        });
+        }, 3, 30000);
 
         const text = await response.text();
 
@@ -56,7 +57,7 @@ const fetchXPosts = async (client) => {
             const fixupUrl = `https://vxtwitter.com/pathofexile/status/${guidNumber}`;
 
             // Send to all configured channels that have xposts enabled
-            for (const [guildId, guildData] of Object.entries(guildChannels)) {
+            for (const [, guildData] of Object.entries(guildChannels)) {
                 // Skip if xposts is false or not set
                 if (!guildData.xposts) continue;
 
@@ -79,7 +80,9 @@ const fetchXPosts = async (client) => {
         savePostedNews(JSON_X_FILE, postedXNews);
 
     } catch (error) {
-        console.error("❌ Error fetching RSS feed:", error);
+        console.error("❌ Error fetching X posts RSS feed:", error);
+        console.error("Stack trace:", error.stack);
+        // Don't crash the bot, just log the error and continue
     }
 };
 

@@ -1,16 +1,28 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
-const fetch = require("node-fetch");
 const xml2js = require("xml2js");
 const { setupPolling } = require("./utils/polling");
 const { fetchXPosts } = require("./utils/getXPosts");
-const { loadPostedNews, savePostedNews, loadGuildChannels, saveGuildChannels } = require("./utils/helpers")
+const { loadPostedNews, savePostedNews, loadGuildChannels, saveGuildChannels } = require("./utils/helpers");
+const { retryFetch } = require("./utils/retryFetch");
 
 // URL for the RSS feed
 const RSS_FEED_URL = "https://www.pathofexile.com/news/rss";
 
 const JSON_FILE = "posted_news.json";
 const GUILD_CHANNELS_FILE = "guild_channels.json";
+
+// -----------------------
+// Global error handlers to prevent bot crashes
+// -----------------------
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("❌ Unhandled Promise Rejection:", reason);
+    console.error("Promise:", promise);
+});
+
+process.on("uncaughtException", (error) => {
+    console.error("❌ Uncaught Exception:", error);
+});
 
 // Create the client with intents.
 const client = new Client({
@@ -19,6 +31,17 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
     ],
+});
+
+// -----------------------
+// Discord client error handlers
+// -----------------------
+client.on("error", (error) => {
+    console.error("❌ Discord client error:", error);
+});
+
+client.on("warn", (warning) => {
+    console.warn("⚠️ Discord client warning:", warning);
 });
 
 // -----------------------
@@ -194,14 +217,14 @@ const fetchAndPostNews = async () => {
     let postedNews = loadPostedNews(JSON_FILE);
 
     try {
-        // Fetch the RSS feed.
-        const response = await fetch(RSS_FEED_URL, {
+        // Fetch the RSS feed with retry logic
+        const response = await retryFetch(RSS_FEED_URL, {
             headers: {
                 "User-Agent":
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
                 "Accept": "application/xml, text/xml"
             }
-        });
+        }, 3, 30000);
 
         let text = await response.text();
 
@@ -295,9 +318,11 @@ const fetchAndPostNews = async () => {
         }
 
         // Fetch Path of Exile Twitter/X Posts and message discord if Twitter/X is enabled.
-        fetchXPosts(client);
+        await fetchXPosts(client);
     } catch (error) {
         console.error("❌ Error fetching RSS feed:", error);
+        console.error("Stack trace:", error.stack);
+        // Don't crash the bot, just log the error and continue
     }
 };
 
